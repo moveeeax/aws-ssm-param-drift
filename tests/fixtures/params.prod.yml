@@ -1,0 +1,37 @@
+# Baseline for the prod API service. Everything this service reads out of
+# Parameter Store is declared here; anything else under /prod is drift.
+path: /prod
+
+ignore_paths:
+  - /prod/tmp/
+
+parameters:
+  - name: /prod/api/timeout
+    type: String
+    value: "30"
+
+  - name: /prod/api/endpoint
+    type: String
+    pattern: '^https://'
+
+  - name: /prod/api/db-password
+    type: SecureString
+    key_id: alias/prod-app
+    rotating: true
+    max_age_days: 90
+
+  - name: /prod/api/signing-key
+    type: SecureString
+    key_id: alias/prod-app
+    value: "the-real-signing-key"
+
+  - name: /prod/api/feature-flags
+    type: StringList
+    tier: Standard
+
+  - name: /prod/worker/queue-url
+    type: String
+
+  - name: /prod/worker/concurrency
+    type: String
+    value: "8"

@@ -1,0 +1,34 @@
+# A small, realistic baseline. Start from this shape and grow it.
+#
+#   name          required, the full SSM path
+#   type          String | StringList | SecureString
+#   tier          Standard | Advanced | Intelligent-Tiering
+#   key_id        the CMK this parameter should be encrypted with
+#   value         pin the content for parameters that genuinely never change
+#   pattern       a regex for parameters whose shape matters but whose value does not
+#   rotating      true for parameters that must be refreshed; pairs with max_age_days
+#   max_age_days  per-parameter override of --max-age-days
+path: /staging
+
+ignore_paths:
+  # Scratch space. People create things here during incidents and that is fine.
+  - /staging/tmp/
+
+parameters:
+  - name: /staging/api/log-level
+    type: String
+    pattern: '^(debug|info|warn|error)$'
+
+  - name: /staging/api/endpoint
+    type: String
+    pattern: '^https://'
+
+  - name: /staging/api/db-password
+    type: SecureString
+    key_id: alias/staging-app
+    rotating: true
+    max_age_days: 90
+
+  - name: /staging/api/feature-flags
+    type: StringList
+    tier: Standard

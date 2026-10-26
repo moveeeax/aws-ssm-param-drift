@@ -1,0 +1,26 @@
+# Python build artefacts
+__pycache__/
+*.py[cod]
+/build/
+/dist/
+/.eggs/
+*.egg-info/
+
+# Environments
+/.venv/
+/venv/
+
+# Tooling caches
+/.pytest_cache/
+/.ruff_cache/
+/.mypy_cache/
+/.coverage
+/htmlcov/
+
+# Local SSM dumps may contain decrypted values; never commit them.
+/*.dump.json
+/ssm-dump*.json
+
+# Fixtures and examples are part of the test suite and are always tracked.
+!tests/fixtures/**
+!examples/**

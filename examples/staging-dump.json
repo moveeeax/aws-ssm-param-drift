@@ -1,0 +1,67 @@
+{
+  "path": "/staging",
+  "region": "eu-central-1",
+  "collected_at": "2026-10-26T12:00:00+00:00",
+  "parameters": [
+    {
+      "Name": "/staging/api/log-level",
+      "Type": "String",
+      "Tier": "Standard",
+      "KeyId": null,
+      "Version": 3,
+      "LastModifiedDate": "2026-10-22T08:00:00+00:00",
+      "Value": "trace",
+      "Decrypted": true
+    },
+    {
+      "Name": "/staging/api/endpoint",
+      "Type": "String",
+      "Tier": "Standard",
+      "KeyId": null,
+      "Version": 1,
+      "LastModifiedDate": "2026-06-14T10:30:00+00:00",
+      "Value": "https://staging.api.example.com",
+      "Decrypted": true
+    },
+    {
+      "Name": "/staging/api/db-password",
+      "Type": "SecureString",
+      "Tier": "Standard",
+      "KeyId": "alias/aws/ssm",
+      "Version": 2,
+      "LastModifiedDate": "2026-02-02T19:45:00+00:00",
+      "Value": null,
+      "Decrypted": false
+    },
+    {
+      "Name": "/staging/api/feature-flags",
+      "Type": "StringList",
+      "Tier": "Advanced",
+      "KeyId": null,
+      "Version": 9,
+      "LastModifiedDate": "2026-10-25T14:10:00+00:00",
+      "Value": "beta-search",
+      "Decrypted": true
+    },
+    {
+      "Name": "/staging/tmp/incident-4821-toggle",
+      "Type": "String",
+      "Tier": "Standard",
+      "KeyId": null,
+      "Version": 1,
+      "LastModifiedDate": "2026-10-25T02:17:00+00:00",
+      "Value": "off",
+      "Decrypted": true
+    },
+    {
+      "Name": "/staging/api/stripe-key",
+      "Type": "String",
+      "Tier": "Standard",
+      "KeyId": null,
+      "Version": 1,
+      "LastModifiedDate": "2026-10-24T23:05:00+00:00",
+      "Value": "sk_test_nobody_declared_me",
+      "Decrypted": true
+    }
+  ]
+}
