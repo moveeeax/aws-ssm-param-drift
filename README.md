@@ -1,7 +1,7 @@
 # aws-ssm-param-drift
 
 [![ci](https://github.com/moveeeax/aws-ssm-param-drift/actions/workflows/ci.yml/badge.svg)](https://github.com/moveeeax/aws-ssm-param-drift/actions/workflows/ci.yml)
-[![python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://www.python.org/)
+[![python](https://img.shields.io/badge/python-3.11%20%E2%80%93%203.15-blue)](https://www.python.org/)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Declare the SSM Parameter Store parameters a service expects in a YAML baseline, then diff
