@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+from pathlib import Path
 
 from . import __version__
-from .baseline import Baseline, BaselineError, load_baseline
+from .baseline import Baseline, BaselineError, load_baseline, parse_baseline
 from .collect import CollectError, collect_live, dump_to_file, load_dump
+from .init import generate, merge
 from .model import SEVERITIES
 from .report import render_json, render_text
 from .rules import ALL_RULES, RuleError, evaluate, validate_rule_names
@@ -21,7 +24,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="aws-ssm-param-drift",
         description="Diff a YAML baseline of SSM parameters against the live account.",
-        epilog="Rules: " + ", ".join(ALL_RULES),
+        epilog="Rules: " + ", ".join(ALL_RULES) + ". "
+        "Run 'aws-ssm-param-drift init --help' to write a starter baseline.",
     )
     p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     p.add_argument("--baseline", help="YAML baseline describing the parameters a service expects")
@@ -52,11 +56,114 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def build_init_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="aws-ssm-param-drift init",
+        description="Write a starter baseline with one entry per live parameter. Values are never written.",
+    )
+    p.add_argument("--path", help="SSM path prefix to describe (defaults to the --merge baseline's 'path')")
+    p.add_argument("--region", help="AWS region for live collection")
+    p.add_argument("--from-json", dest="from_json", help="read a cached dump instead of calling AWS")
+    p.add_argument(
+        "--merge", metavar="FILE", help="append only the undeclared parameters to this existing baseline"
+    )
+    p.add_argument(
+        "--output", "-o", metavar="FILE", help="write here instead of stdout; may be the --merge file"
+    )
+    p.add_argument(
+        "--ignore-path", dest="ignore_path", action="append", default=[], help="skip a path prefix"
+    )
+    return p
+
+
+def _same_file_as_stdout(path: str) -> bool:
+    try:
+        return os.path.samestat(os.fstat(sys.stdout.fileno()), os.stat(path))
+    except (OSError, ValueError, AttributeError):
+        # io.UnsupportedOperation (pytest's capture, a StringIO) is both an OSError and a ValueError.
+        return False
+
+
+def _write_atomically(path: str, text: str) -> None:
+    target = Path(path)
+    tmp = target.with_name(f".{target.name}.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, target)
+
+
+def init_main(argv: list[str]) -> int:
+    args = build_init_parser().parse_args(argv)
+
+    existing = None
+    if args.merge:
+        if not args.output and _same_file_as_stdout(args.merge):
+            # `init --merge b.yml > b.yml`: the shell has already truncated the file.
+            print(
+                f"error: stdout is {args.merge} itself; use --output {args.merge} to update it in place",
+                file=sys.stderr,
+            )
+            return EXIT_USAGE
+        try:
+            existing = Path(args.merge).read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"error: cannot read baseline {args.merge}: {exc}", file=sys.stderr)
+            return EXIT_USAGE
+
+    path = args.path
+    if not path and existing is not None:
+        try:
+            path = parse_baseline(existing).path
+        except BaselineError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return EXIT_USAGE
+    if not path and not args.from_json:
+        print("error: --path is required for live collection", file=sys.stderr)
+        return EXIT_USAGE
+
+    try:
+        if args.from_json:
+            live = load_dump(args.from_json)
+        else:
+            live = collect_live(path, region=args.region, decrypt=False)
+    except CollectError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_USAGE
+
+    try:
+        if existing is not None:
+            result = merge(existing, live, path=path, ignore_paths=args.ignore_path)
+        else:
+            result = generate(live, path=path, ignore_paths=args.ignore_path)
+    except BaselineError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return EXIT_USAGE
+
+    if args.output:
+        _write_atomically(args.output, result.text)
+    else:
+        sys.stdout.write(result.text)
+
+    where = args.output or "stdout"
+    if existing is not None:
+        print(
+            f"added {len(result.added)} undeclared parameter(s) to {result.kept} existing entr(ies)"
+            f" -> {where}",
+            file=sys.stderr,
+        )
+    else:
+        print(f"wrote {len(result.added)} entr(ies) for {path or '(all)'} -> {where}", file=sys.stderr)
+    return EXIT_CLEAN
+
+
 def _split_rules(raw: str) -> list[str]:
     return [r.strip() for r in raw.split(",") if r.strip()]
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if argv and argv[0] == "init":
+        return init_main(argv[1:])
+
     parser = build_parser()
     args = parser.parse_args(argv)
 

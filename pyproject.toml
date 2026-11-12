@@ -23,7 +23,7 @@ classifiers = [
   "Programming Language :: Python :: 3.15",
   "Topic :: System :: Systems Administration",
 ]
-dependencies = ["PyYAML>=6.0.3", "boto3>=1.43"]
+dependencies = ["PyYAML>=6.0.3", "ruamel.yaml>=0.18", "boto3>=1.43"]
 
 [project.optional-dependencies]
 dev = ["pytest>=7.4", "ruff>=0.17"]

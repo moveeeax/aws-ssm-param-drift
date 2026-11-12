@@ -58,3 +58,10 @@ jobs:
           set -e
           echo "exit=$code"
           test "$code" -eq 1
+
+      - name: A generated baseline passes its own audit
+        run: |
+          aws-ssm-param-drift init --path /staging \
+            --from-json examples/staging-dump.json --output /tmp/generated.yml
+          aws-ssm-param-drift --baseline /tmp/generated.yml \
+            --from-json examples/staging-dump.json --fail-on undeclared,missing

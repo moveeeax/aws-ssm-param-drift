@@ -69,6 +69,46 @@ Every key except `name` is optional, and an omitted key means "do not check this
 `value` only for parameters whose content is genuinely fixed; for the rest, a `pattern` catches
 the shape without pretending to know the content.
 
+### Starting from the live account
+
+Nobody writes 200 entries by hand. `init` writes one entry per live parameter under the path,
+with `name`, `type` and `tier`, plus `key_id` and `rotating: true` for SecureStrings. It never
+writes a `value`, decrypted or not: the file is meant to be committed.
+
+```bash
+# A fresh baseline
+aws-ssm-param-drift init --path /prod > params.prod.yml
+
+# Same thing from a cached dump, no credentials
+aws-ssm-param-drift init --path /prod --from-json /tmp/ssm.json > params.prod.yml
+
+# Append only the parameters the baseline does not declare yet
+aws-ssm-param-drift init --merge params.prod.yml --output params.prod.yml
+```
+
+`--merge` keeps the file as it is (comments, key order, quoting, existing entries) and appends
+the undeclared parameters at the end of `parameters`. It reads `path` and `ignore_paths` from the
+baseline, so `--path` is optional there. Existing entries are never rewritten to match the
+account; that disagreement is what the audit is for. Write the result with `--output`, which may
+be the merged file itself. Do not redirect stdout onto the file you are merging: the shell
+truncates it before `init` starts. `init` detects that case and exits 2 instead of writing a
+baseline built from an empty file, but the original content is already gone (restore it from git).
+
+The generated file is a description of what is live, not a statement of what should be. Review it
+before committing: a SecureString encrypted with `alias/aws/ssm` comes out with
+`key_id: alias/aws/ssm`, which never fires `default-kms-key`. Change it to the CMK you want if that
+is the point. Drop `rotating: true` from SecureStrings that are never rotated, and add `pattern`
+or `value` where they matter.
+
+| `init` flag | Effect |
+| --- | --- |
+| `--path PREFIX` | SSM path to describe. Required for live collection unless `--merge` names a baseline with a `path`. |
+| `--region NAME` | AWS region for live collection. |
+| `--from-json FILE` | Read a cached dump; makes no API calls. |
+| `--merge FILE` | Start from this baseline and append only the parameters it does not declare. |
+| `--output FILE`, `-o` | Write here instead of stdout. May be the `--merge` file. |
+| `--ignore-path PREFIX` | Leave a path prefix out. Repeatable. |
+
 ## Usage
 
 ```bash
@@ -163,6 +203,8 @@ live version and last-modified date so you can at least see whether anything mov
 Start with `--fail-on missing,type-mismatch,default-kms-key`. Those three are unambiguous
 breakage. Add `undeclared` once the baseline has caught up with reality, otherwise the first run
 fails on every parameter anybody ever created by hand, which is usually a lot of them.
+`aws-ssm-param-drift init --merge params.prod.yml -o params.prod.yml` gets it there in one
+reviewed commit, and from then on `undeclared` only fires on parameters created after it.
 
 ## Development
 
